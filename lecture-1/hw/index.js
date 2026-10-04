@@ -14,74 +14,140 @@ const totalCount = document.querySelector('#totalCount');
 const activeCount = document.querySelector('#activeCount');
 const doneCount = document.querySelector('#doneCount');
 
-function addTodo() {
-  // TODO: получить значение из input, проверить пустую строку,
-  // создать объект todo и добавить в state.todos,
-  // очистить поле ввода и вызвать renderTodos()
+function saveTodo(todo) {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(todo);
+    }, 500);
+  });
+}
+
+function createDeleteHandler(id) {
+  return function () {
+    deleteTodo(id);
+  };
+}
+
+function createToggleHandler(id) {
+  return function () {
+    toggleTodo(id);
+  };
+}
+
+async function addTodo() {
+  const text = todoInput.value.trim();
+  if (!text) return;
+
+  const submitButton = todoForm.querySelector('button[type="submit"]');
+  submitButton.disabled = true;
+  submitButton.textContent = 'Сохраняем...';
+
+  const newTodo = {
+    id: Date.now(),
+    text: text,
+    completed: false,
+  };
+
+  await saveTodo(newTodo);
+
+  state.todos.push(newTodo);
+  todoInput.value = '';
+  renderTodos();
+
+  submitButton.disabled = false;
+  submitButton.textContent = 'Добавить';
 }
 
 function deleteTodo(id) {
-  // TODO: удалить задачу по id из state.todos
-  // и затем вызвать renderTodos()
+  state.todos = state.todos.filter((todo) => todo.id !== id);
+  renderTodos();
 }
 
 function toggleTodo(id) {
-  // TODO: найти задачу по id и поменять completed
-  // затем вызвать renderTodos()
+  const todo = state.todos.find((t) => t.id === id);
+  if (todo) {
+    todo.completed = !todo.completed;
+    renderTodos();
+  }
 }
 
 function searchTodos() {
-  // TODO: прочитать значение из searchInput,
-  // сохранить в state.search и вызвать renderTodos()
+  state.search = searchInput.value;
+  renderTodos();
 }
 
 function getFilteredTodos() {
-  // TODO: вернуть список задач в зависимости от state.filter и state.search
-  // Например: all, active, completed
-  return [];
+  return state.todos.filter((todo) => {
+    const matchesSearch = todo.text.toLowerCase().includes(state.search.toLowerCase());
+    if (state.filter === 'active') return !todo.completed && matchesSearch;
+    if (state.filter === 'completed') return todo.completed && matchesSearch;
+    return matchesSearch;
+  });
 }
 
 function renderTodos() {
-  // TODO: получить отфильтрованный список через getFilteredTodos()
-  // и отрисовать список задач в todoList
-  // Подумать про пустое состояние, completed класс и кнопки удаления
+  const filtered = getFilteredTodos();
+  todoList.innerHTML = '';
+
+  if (filtered.length === 0) {
+    todoList.innerHTML = '<li class="empty-state">Ничего не найдено</li>';
+  } else {
+    filtered.forEach((todo) => {
+      const li = document.createElement('li');
+      li.className = `todo-item ${todo.completed ? 'completed' : ''}`;
+      li.dataset.id = todo.id;
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = todo.completed;
+      checkbox.dataset.id = todo.id;
+      checkbox.addEventListener('change', createToggleHandler(todo.id));
+
+      const span = document.createElement('span');
+      span.className = 'todo-text';
+      span.textContent = todo.text;
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'delete-btn';
+      deleteBtn.textContent = '✕';
+      deleteBtn.dataset.id = todo.id;
+      deleteBtn.addEventListener('click', createDeleteHandler(todo.id));
+
+      li.appendChild(checkbox);
+      li.appendChild(span);
+      li.appendChild(deleteBtn);
+      todoList.appendChild(li);
+    });
+  }
+
+  updateStats();
 }
 
 function updateStats() {
-  // TODO: обновить значения totalCount, activeCount, doneCount
-  // на основе state.todos
+  const total = state.todos.length;
+  const active = state.todos.filter((t) => !t.completed).length;
+  const done = state.todos.filter((t) => t.completed).length;
+
+  totalCount.textContent = total;
+  activeCount.textContent = active;
+  doneCount.textContent = done;
 }
 
 function clearCompleted() {
-  // TODO: удалить все выполненные задачи и вызвать renderTodos()
+  state.todos = state.todos.filter((todo) => !todo.completed);
+  renderTodos();
 }
 
 function setActiveFilter(button) {
-  // TODO: обновить state.filter и выделить активную кнопку фильтра
+  state.filter = button.dataset.filter;
+  filterButtons.forEach((btn) => btn.classList.remove('active'));
+  button.classList.add('active');
+  renderTodos();
 }
 
 todoForm.addEventListener('submit', (event) => {
   event.preventDefault();
   addTodo();
-});
-
-todoList.addEventListener('click', (event) => {
-  const deleteButton = event.target.closest('.delete-btn');
-
-  if (deleteButton) {
-    const { id } = deleteButton.dataset;
-    deleteTodo(Number(id));
-    return;
-  }
-});
-
-todoList.addEventListener('change', (event) => {
-  const checkbox = event.target.closest('input[type="checkbox"]');
-
-  if (checkbox) {
-    const { id } = checkbox.dataset;
-    toggleTodo(Number(id));
-  }
 });
 
 searchInput.addEventListener('input', () => {
