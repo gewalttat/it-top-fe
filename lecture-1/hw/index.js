@@ -2,25 +2,16 @@ const state = {
   todos: [],
   filter: 'all',
   search: '',
+  isLoading: false,
 };
 
-const todoForm = document.querySelector('#todoForm');
-const todoInput = document.querySelector('#todoInput');
-const todoList = document.querySelector('#todoList');
-const searchInput = document.querySelector('#searchInput');
-const filterButtons = document.querySelectorAll('.filter-btn');
-const clearCompletedBtn = document.querySelector('#clearCompletedBtn');
-const totalCount = document.querySelector('#totalCount');
-const activeCount = document.querySelector('#activeCount');
-const doneCount = document.querySelector('#doneCount');
-
-function saveTodo(todo) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(todo);
-    }, 500);
-  });
-}
+const form = document.getElementById('todo-form');
+const input = document.getElementById('todo-input');
+const searchInput = document.getElementById('search-input');
+const list = document.getElementById('todo-list');
+const countersEl = document.getElementById('counters');
+const clearCompletedBtn = document.getElementById('clear-completed');
+const filterButtons = document.querySelectorAll('.filters button');
 
 function createDeleteHandler(id) {
   return function () {
@@ -34,135 +25,141 @@ function createToggleHandler(id) {
   };
 }
 
-async function addTodo() {
-  const text = todoInput.value.trim();
-  if (!text) return;
+function addTodo(text) {
+  return new Promise((resolve) => {
+    state.isLoading = true;
+    renderTodos();
 
-  const submitButton = todoForm.querySelector('button[type="submit"]');
-  submitButton.disabled = true;
-  submitButton.textContent = 'Сохраняем...';
-
-  const newTodo = {
-    id: Date.now(),
-    text: text,
-    completed: false,
-  };
-
-  await saveTodo(newTodo);
-
-  state.todos.push(newTodo);
-  todoInput.value = '';
-  renderTodos();
-
-  submitButton.disabled = false;
-  submitButton.textContent = 'Добавить';
+    setTimeout(() => {
+      state.todos.push({
+        id: Date.now(),
+        text: text.trim(),
+        completed: false,
+      });
+      state.isLoading = false;
+      renderTodos();
+      resolve();
+    }, 500);
+  });
 }
 
 function deleteTodo(id) {
-  state.todos = state.todos.filter((todo) => todo.id !== id);
-  renderTodos();
+  if (state.isLoading) return;
+
+  return new Promise((resolve) => {
+    state.isLoading = true;
+    renderTodos();
+
+    setTimeout(() => {
+      state.todos = state.todos.filter((t) => t.id !== id);
+      state.isLoading = false;
+      renderTodos();
+      resolve();
+    }, 400);
+  });
 }
 
 function toggleTodo(id) {
   const todo = state.todos.find((t) => t.id === id);
-  if (todo) {
-    todo.completed = !todo.completed;
-    renderTodos();
-  }
-}
-
-function searchTodos() {
-  state.search = searchInput.value;
+  if (!todo) return;
+  todo.completed = !todo.completed;
   renderTodos();
 }
 
-function getFilteredTodos() {
+function getVisibleTodos() {
   return state.todos.filter((todo) => {
-    const matchesSearch = todo.text.toLowerCase().includes(state.search.toLowerCase());
-    if (state.filter === 'active') return !todo.completed && matchesSearch;
-    if (state.filter === 'completed') return todo.completed && matchesSearch;
-    return matchesSearch;
+    const matchesFilter =
+      state.filter === 'all' ||
+      (state.filter === 'active' && !todo.completed) ||
+      (state.filter === 'completed' && todo.completed);
+
+    const matchesSearch = todo.text
+      .toLowerCase()
+      .includes(state.search.toLowerCase().trim());
+
+    return matchesFilter && matchesSearch;
   });
 }
 
-function renderTodos() {
-  const filtered = getFilteredTodos();
-  todoList.innerHTML = '';
-
-  if (filtered.length === 0) {
-    todoList.innerHTML = '<li class="empty-state">Ничего не найдено</li>';
-  } else {
-    filtered.forEach((todo) => {
-      const li = document.createElement('li');
-      li.className = `todo-item ${todo.completed ? 'completed' : ''}`;
-      li.dataset.id = todo.id;
-
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.checked = todo.completed;
-      checkbox.dataset.id = todo.id;
-      checkbox.addEventListener('change', createToggleHandler(todo.id));
-
-      const span = document.createElement('span');
-      span.className = 'todo-text';
-      span.textContent = todo.text;
-
-      const deleteBtn = document.createElement('button');
-      deleteBtn.className = 'delete-btn';
-      deleteBtn.textContent = '✕';
-      deleteBtn.dataset.id = todo.id;
-      deleteBtn.addEventListener('click', createDeleteHandler(todo.id));
-
-      li.appendChild(checkbox);
-      li.appendChild(span);
-      li.appendChild(deleteBtn);
-      todoList.appendChild(li);
-    });
-  }
-
-  updateStats();
-}
-
-function updateStats() {
+function renderCounters() {
   const total = state.todos.length;
   const active = state.todos.filter((t) => !t.completed).length;
-  const done = state.todos.filter((t) => t.completed).length;
-
-  totalCount.textContent = total;
-  activeCount.textContent = active;
-  doneCount.textContent = done;
+  const completed = total - active;
+  countersEl.textContent =
+    `Всего: ${total} | Активные: ${active} | Выполненные: ${completed}`;
 }
 
-function clearCompleted() {
-  state.todos = state.todos.filter((todo) => !todo.completed);
-  renderTodos();
+function renderTodos() {
+  list.innerHTML = '';
+
+  if (state.isLoading) {
+    list.innerHTML = '<li class="loading">Сохраняем...</li>';
+    return;
+  }
+
+  const visible = getVisibleTodos();
+
+  if (visible.length === 0) {
+    list.innerHTML = '<li class="empty">Ничего не найдено</li>';
+    renderCounters();
+    return;
+  }
+
+  visible.forEach((todo) => {
+    const li = document.createElement('li');
+    li.className = todo.completed ? 'todo completed' : 'todo';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = todo.completed;
+    checkbox.addEventListener('change', createToggleHandler(todo.id));
+
+    const span = document.createElement('span');
+    span.textContent = todo.text;
+
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '×';
+    delBtn.setAttribute('aria-label', 'Удалить задачу');
+    delBtn.addEventListener('click', createDeleteHandler(todo.id));
+
+    li.append(checkbox, span, delBtn);
+    list.appendChild(li);
+  });
+
+  renderCounters();
 }
 
-function setActiveFilter(button) {
-  state.filter = button.dataset.filter;
-  filterButtons.forEach((btn) => btn.classList.remove('active'));
-  button.classList.add('active');
-  renderTodos();
-}
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const text = input.value.trim();
 
-todoForm.addEventListener('submit', (event) => {
-  event.preventDefault();
-  addTodo();
+  if (!text) return;
+  if (state.isLoading) return;
+
+  addTodo(text).then(() => {
+    input.value = '';
+    input.focus();
+  });
 });
 
-searchInput.addEventListener('input', () => {
-  searchTodos();
+searchInput.addEventListener('input', (e) => {
+  state.search = e.target.value;
+  renderTodos();
 });
 
-filterButtons.forEach((button) => {
-  button.addEventListener('click', () => {
-    setActiveFilter(button);
+filterButtons.forEach((btn) => {
+  btn.addEventListener('click', () => {
+    state.filter = btn.dataset.filter;
+    filterButtons.forEach((b) =>
+      b.classList.toggle('active', b === btn)
+    );
+    renderTodos();
   });
 });
 
 clearCompletedBtn.addEventListener('click', () => {
-  clearCompleted();
+  state.todos = state.todos.filter((t) => !t.completed);
+  renderTodos();
 });
 
 renderTodos();
-updateStats();
