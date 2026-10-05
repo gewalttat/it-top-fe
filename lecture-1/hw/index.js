@@ -14,6 +14,16 @@ const totalCount = document.querySelector('#totalCount');
 const activeCount = document.querySelector('#activeCount');
 const doneCount = document.querySelector('#doneCount');
 
+function createIdGenerator() {
+  let counter = 0;
+  return function () {
+    counter += 1;
+    return counter;
+  };
+}
+
+const generateId = createIdGenerator();
+
 function saveTodo(todo) {
   return new Promise((resolve) => {
     setTimeout(() => {
@@ -43,7 +53,7 @@ async function addTodo() {
   submitButton.textContent = 'Сохраняем...';
 
   const newTodo = {
-    id: Date.now(),
+    id: generateId(),
     text: text,
     completed: false,
   };
