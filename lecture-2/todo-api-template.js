@@ -67,3 +67,17 @@ async function main() {
 }
 
 main();
+
+// есть такой массив данных
+// на выходе нужно получить объект с сортировкой элементов по type, например
+
+// { 
+// pending: [{ description: "OAO ABC", type: "pending" }, { description: "Ginza", type: "pending" }],
+// xxx: [{ description: "Tinkoff", type: "xxx" }],
+// processed: [{ description: "BurgerKing", type: "processed" },  { description: "Zara", type: "processed" }]
+// }
+
+
+function convert(arr) {
+  // code here
+}
