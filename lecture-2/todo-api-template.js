@@ -68,6 +68,14 @@ async function main() {
 
 main();
 
+const transactions = [
+  { description: "BurgerKing", type: "processed" },
+  { description: "OAO ABC", type: "pending" },
+  { description: "Ginza", type: "pending" },
+  { description: "Zara", type: "processed" },
+  { description: "Tinkoff", type: "xxx" }
+];
+
 // есть такой массив данных
 // на выходе нужно получить объект с сортировкой элементов по type, например
 
@@ -78,6 +86,6 @@ main();
 // }
 
 
-function convert(arr) {
+function convert(transactions) {
   // code here
 }
